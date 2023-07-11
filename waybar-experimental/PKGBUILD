@@ -1,5 +1,5 @@
 pkgname=waybar-experimental
-pkgver=0.9.17
+pkgver=0.9.16
 pkgrel=1
 pkgdesc='Highly customizable Wayland bar for Sway and Wlroots based compositors'
 arch=('x86_64')
