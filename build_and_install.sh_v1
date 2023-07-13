@@ -1,0 +1,100 @@
+#!/bin/bash
+
+#colorcoding
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+LBLUE='\033[1;34m'
+NOCOLOR='\033[0m'
+
+date=$(date '+%Y-%m-%d')
+
+echo -e "\n${LBLUE}delete all source files and folders${NOCOLOR}"
+for f in ~/customrepo/source/*; do
+  # if f is a directory, continue
+  if [ -d "$f" ]; then
+    sudo rm -r $f
+  fi
+done
+echo -e "done\n"
+
+echo -e "${LBLUE}clone sources${NOCOLOR}"
+git clone https://aur.archlinux.org/tuxedo-control-center-bin.git ~/customrepo/source/tuxedo-control-center-bin
+git clone https://aur.archlinux.org/tuxedo-keyboard-dkms.git ~/customrepo/source/tuxedo-keyboard-dkms
+git clone https://aur.archlinux.org/tuxedo-keyboard-ite-dkms.git ~/customrepo/source/tuxedo-keyboard-ite-dkms
+git clone https://gitlab.archlinux.org/archlinux/packaging/packages/waybar ~/customrepo/source/waybar
+#git clone https://gitlab.archlinux.org/archlinux/packaging/packages/hyprland ~/customrepo/source/hyprland
+
+echo -e "\n"
+
+#diff files and apply my patches
+echo -e "${LBLUE}diff current and new version${NOCOLOR}"
+for f in ~/customrepo/source/*; do
+  if [ -d "$f" ]; then        
+    buildpackage=0
+    currentDir=$(basename "$f")
+    echo -e "${YELLOW}package $currentDir${NOCOLOR}"
+    #check if version is different.
+    pushd ~/customrepo/mybuildfiles/$currentDir/ > /dev/null
+    ver_mybuild=$(source PKGBUILD; echo "$pkgver-$pkgrel")
+    popd > /dev/null
+    pushd $f > /dev/null
+    ver_new=$(source PKGBUILD; echo "$pkgver-$pkgrel")
+    popd > /dev/null
+    #if version is not different, don't continue
+    if ! [ "$ver_mybuild" == "$ver_new" ]; then
+	    for file in $f/*; do
+	      currentFile=$(basename "$file")
+      
+	      echo -e "${RED}$currentFile${NOCOLOR}"
+	      diff -u ~/customrepo/mybuildfiles/$currentDir/$currentFile $file > $f/"${currentFile}_diff"
+	      
+	      #show diff file to manually change
+	      cat $f/"${currentFile}_diff"
+	      continue="Y"
+	      echo -n "accept changes [Y/n]? "
+	      read continue
+	      if ! [[ "$continue" == "N" || "$continue" == "n" ]]
+	      then
+	        #create backup of last used files
+	        mkdir -p ~/customrepo/mybuildfiles/archive/$date/$currentDir
+	        cp ~/customrepo/mybuildfiles/$currentDir/$currentFile ~/customrepo/mybuildfiles/archive/$date/$currentDir
+	        #apply patch to mybuild to update version and pkgbuild
+	        patch ~/customrepo/mybuildfiles/$currentDir/$currentFile < $f/"${currentFile}_diff"
+	        #apply my patch if available
+	        if [ -f ~/customrepo/patches/$currentDir/"${currentFile}_diff" ]; then
+		  echo -e "${LBLUE}apply personal patch${NOCOLOR}"
+		  cp ~/customrepo/patches/$currentDir/* ~/customrepo/mybuildfiles/$currentDir/
+	          patch ~/customrepo/mybuildfiles/$currentDir/$currentFile < ~/customrepo/mybuildfiles/$currentDir/"${currentFile}_diff"
+		  echo "done\n"
+	        fi
+                buildpackage=$((buildpackage+1))
+              else
+		buildpackage=-100
+              fi
+	    done
+	    #package needs to be build
+	    if [ $buildpackage -gt 0 ]; then
+		#build the new version
+		pushd ~/customrepo/mybuildfiles/$currentDir/ > /dev/null
+		#remove old buildfiles
+		echo -e "\n${LBLUE}removing old buildfiles${NOCOLOR}"
+		sudo rm -r pkg
+		sudo rm -r src
+		sudo rm *.rpm
+		sudo rm *.zst
+		echo -e "${LBLUE}building new version${NOCOLOR}\n"
+		makepkg -sr
+		#copy new pkg to repository
+		echo -e "\n${LBLUE}copy new package to repository${NOCOLOR}"
+		mkdir -p ~/customrepo/packages/$currentDir/
+		newpackage=$(basename $(ls ~/customrepo/mybuildfiles/$currentDir/*.zst))
+		cp ~/customrepo/mybuildfiles/$currentDir/$newpackage ~/customrepo/packages/
+		repo-add ~/customrepo/packages/custom.db.tar.gz ~/customrepo/packages/$newpackage
+		echo -e "done\n"
+		popd > /dev/null
+	    fi
+    else
+      echo "No new version for this package."
+    fi
+  fi
+done
