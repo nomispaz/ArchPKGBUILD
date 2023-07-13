@@ -27,7 +27,7 @@ while getopts "s:d:ig" flag
 do
 	case "${flag}" in
         	s) sourceDir=${OPTARG};;
-		s) destDir=${OPTARG};;
+		d) destDir=${OPTARG};;
         	i) init=1;;
         	g) buildGit=1;;
     	esac
