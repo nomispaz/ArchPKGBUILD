@@ -1,1 +1,76 @@
+# Maintainer: Brett Cornwall <ainola@archlinux.org>
+# Maintainer: Maxim Baz <$pkgname at maximbaz dot com>
 
+pkgname=waybar
+pkgver=0.9.19
+pkgrel=1
+pkgdesc='Highly customizable Wayland bar for Sway and Wlroots based compositors'
+arch=('x86_64')
+url="https://github.com/Alexays/Waybar/"
+license=('MIT')
+depends=(
+    'gtkmm3'
+    'libjsoncpp.so'
+    'libsigc++'
+    'fmt'
+    'jack' 'libjack.so'
+    'wayland'
+    'libdate-tz.so'
+    'libspdlog.so'
+    'gtk-layer-shell'
+    'libupower-glib.so'
+    'upower'
+    'libevdev'
+    'libinput'
+    'libpulse'
+    'libnl'
+    'libappindicator-gtk3'
+    'libdbusmenu-gtk3'
+    'libmpdclient'
+    'libsndio.so'
+    'libxkbcommon'
+    'libwireplumber'
+    'playerctl'
+)
+makedepends=(
+    'cmake'
+    'catch2'
+    'meson'
+    'scdoc' # For generating manpages
+    'wayland-protocols'
+)
+backup=(
+    etc/xdg/waybar/config
+    etc/xdg/waybar/style.css
+)
+optdepends=(
+    'otf-font-awesome: Icons in the default configuration'
+)
+source=("$pkgname-$pkgver.tar.gz::https://github.com/Alexays/Waybar/archive/$pkgver.tar.gz"
+	"hyprland-clickable-workspaces.patch")
+sha256sums=('09695c9d6ae4cf33d8e8a2c3e4ba216e5d293e2d72d4115c64c5d2612976816d'
+	    'SKIP')
+
+prepare() {
+    patch --directory="Waybar-$pkgver" --forward --strip=1 --input="${srcdir}/hyprland-clickable-workspaces.patch"
+}
+
+build() {
+    cd "Waybar-$pkgver"
+    # TODO tests depend on catch2 v3
+    meson --prefix=/usr \
+          --buildtype=plain \
+          --auto-features=enabled \
+          --wrap-mode=nodownload \
+          -Dexperimental=true \
+          -Dcava=disabled \
+          -Dtests=disabled \
+          build
+    ninja -C build
+}
+
+package() {
+    cd "Waybar-$pkgver"
+    DESTDIR="$pkgdir" ninja -C build install
+    install -Dm644 LICENSE -t "$pkgdir/usr/share/licenses/$pkgname/"
+}
