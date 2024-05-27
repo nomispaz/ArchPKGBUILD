@@ -1,0 +1,52 @@
+_name=pywlroots
+pkgname=python-pywlroots
+pkgver=0.17.0
+pkgrel=1
+pkgdesc="Python binding to the wlroots library using cffi"
+arch=(x86_64)
+url="https://github.com/flacjacket/pywlroots"
+license=(NCSA)
+depends=(
+  glibc
+  python
+  python-cffi
+  python-pywayland
+  python-xkbcommon
+  wlroots
+)
+makedepends=(
+  python-build
+  python-installer
+  python-setuptools
+  python-wheel
+)
+checkdepends=(python-pytest)
+provides=(pywlroots)
+conflicts=(pywlroots)
+replaces=(pywlroots)
+source=($_name-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz)
+sha512sums=('7084d68092c01b44676304b602b47eee237d835d2bee7a71f1e9faeedbdb407ae5cb072c53066cb43dc9bca747e8d6ca5466a7a43a7382b9844cbe57a8de8d8b')
+b2sums=('8e73b3e15f93b85e32e298664dae90870c095a674ef5db2730cbf1c0cd18e27911ac96a3988ef7b7fcc77758d23f7370f2e07469b096de372475654a91c9cd17')
+
+build() {
+  cd $_name-$pkgver
+  python wlroots/ffi_build.py
+  python -m build --wheel --no-isolation
+}
+
+check() {
+  local _site_packages=$(python -c "import site; print(site.getsitepackages()[0])")
+
+  cd $_name-$pkgver
+  python -m installer --destdir=test_dir dist/*.whl
+  export PYTHONPATH="test_dir/$_site_packages:$PYTHONPATH"
+  pytest -vv
+}
+
+package() {
+  cd $_name-$pkgver
+  python -m installer --destdir="$pkgdir" dist/*.whl
+  install -vDm 644 README.rst -t "$pkgdir/usr/share/doc/$pkgname"
+  install -vDm 644 LICENSE -t "$pkgdir/usr/share/licenses/$pkgname"
+}
+
