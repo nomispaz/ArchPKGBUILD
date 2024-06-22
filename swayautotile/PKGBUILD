@@ -1,0 +1,21 @@
+pkgname=('swayautotile')
+pkgver=0.3
+pkgrel=1
+pkgdesc="Skript to recreate the dwindle layout of dynamic tiling managers for sway (and possibly i3)"
+arch=('x86_64')
+url="https://github.com/nomispaz/swayautotile"
+license=('MIT')
+provides=('swayautotile')
+depends=('python-i3ipc')
+makedepends=('python-setuptools' 'python-wheel')
+source=("$pkgname-$pkgver.tar.gz::https://github.com/nomispaz/swayautotile/archive/refs/tags/$pkgver.tar.gz")
+
+md5sums=('ce91dc1fd3a3eaeebfabdbdfc293de68')
+
+package() {
+  cd "${pkgname}-${pkgver}"
+  python setup.py install --root="${pkgdir}" --optimize=1
+  
+  # install -D -t "$pkgdir"/usr/share/licenses/"$pkgname" LICENSE
+  # 1install -D -t "$pkgdir"/usr/share/doc/"$pkgname" README.md
+}
